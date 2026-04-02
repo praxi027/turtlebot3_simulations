@@ -12,13 +12,13 @@
 
     <scene>
       <shadows>false</shadows>
-      <ambient>0.75 0.75 0.75 1.0</ambient>
-      <background>0.95 0.95 0.95 1.0</background>
+      <ambient>0.76 0.76 0.76 1.0</ambient>
+      <background>0.95 0.95 0.94 1.0</background>
     </scene>
 
     <gui fullscreen='0'>
       <camera name='user_camera'>
-        <pose frame=''>0.15 0.0 12.0 0 1.52 0</pose>
+        <pose frame=''>0.20 0.05 11.8 0 1.52 0</pose>
         <view_controller>orbit</view_controller>
         <projection_type>perspective</projection_type>
       </camera>
@@ -45,7 +45,7 @@
       </ode>
     </physics>
 
-    <model name='room_shell'>
+    <model name='warehouse_easy_layout'>
       <static>true</static>
 
       <link name='top_wall'>
@@ -65,14 +65,11 @@
             </box>
           </geometry>
           <material>
-            <script>
-              <uri>file://media/materials/scripts/gazebo.material</uri>
-              <name>Gazebo/Wood</name>
-            </script>
-            <ambient>1 1 1 1</ambient>
+            <ambient>0.65 0.65 0.68 1.0</ambient>
+            <diffuse>0.65 0.65 0.68 1.0</diffuse>
           </material>
         </visual>
-        <pose>0 2.25 0 0 0 0</pose>
+        <pose>0 2.15 0 0 0 0</pose>
       </link>
 
       <link name='bottom_wall'>
@@ -92,14 +89,11 @@
             </box>
           </geometry>
           <material>
-            <script>
-              <uri>file://media/materials/scripts/gazebo.material</uri>
-              <name>Gazebo/Wood</name>
-            </script>
-            <ambient>1 1 1 1</ambient>
+            <ambient>0.65 0.65 0.68 1.0</ambient>
+            <diffuse>0.65 0.65 0.68 1.0</diffuse>
           </material>
         </visual>
-        <pose>0 -2.25 0 0 0 0</pose>
+        <pose>0 -2.15 0 0 0 0</pose>
       </link>
 
       <link name='left_wall'>
@@ -107,7 +101,7 @@
           <pose>0 0 0.3 0 0 0</pose>
           <geometry>
             <box>
-              <size>4.6 0.15 0.6</size>
+              <size>4.45 0.15 0.6</size>
             </box>
           </geometry>
         </collision>
@@ -115,15 +109,12 @@
           <pose>0 0 0.3 0 0 0</pose>
           <geometry>
             <box>
-              <size>4.6 0.15 0.6</size>
+              <size>4.45 0.15 0.6</size>
             </box>
           </geometry>
           <material>
-            <script>
-              <uri>file://media/materials/scripts/gazebo.material</uri>
-              <name>Gazebo/Wood</name>
-            </script>
-            <ambient>1 1 1 1</ambient>
+            <ambient>0.65 0.65 0.68 1.0</ambient>
+            <diffuse>0.65 0.65 0.68 1.0</diffuse>
           </material>
         </visual>
         <pose>-3.425 0 0 0 0 1.5708</pose>
@@ -134,7 +125,7 @@
           <pose>0 0 0.3 0 0 0</pose>
           <geometry>
             <box>
-              <size>4.6 0.15 0.6</size>
+              <size>4.45 0.15 0.6</size>
             </box>
           </geometry>
         </collision>
@@ -142,85 +133,84 @@
           <pose>0 0 0.3 0 0 0</pose>
           <geometry>
             <box>
-              <size>4.6 0.15 0.6</size>
+              <size>4.45 0.15 0.6</size>
             </box>
           </geometry>
           <material>
-            <script>
-              <uri>file://media/materials/scripts/gazebo.material</uri>
-              <name>Gazebo/Wood</name>
-            </script>
-            <ambient>1 1 1 1</ambient>
+            <ambient>0.65 0.65 0.68 1.0</ambient>
+            <diffuse>0.65 0.65 0.68 1.0</diffuse>
           </material>
         </visual>
         <pose>3.425 0 0 0 0 1.5708</pose>
       </link>
 
-      <link name='left_block'>
-        <collision name='left_block_collision'>
-          <pose>0 0 0.3 0 0 0</pose>
+      <link name='rack_main'>
+        <collision name='rack_main_collision'>
+          <pose>0 0 0.48 0 0 0</pose>
           <geometry>
             <box>
-              <size>2.1 0.18 0.6</size>
+              <size>2.10 1.10 0.96</size>
             </box>
           </geometry>
         </collision>
-        <visual name='left_block_visual'>
-          <pose>0 0 0.3 0 0 0</pose>
+        <visual name='rack_main_visual'>
+          <pose>0 0 0.48 0 0 0</pose>
           <geometry>
             <box>
-              <size>2.1 0.18 0.6</size>
+              <size>2.10 1.10 0.96</size>
             </box>
           </geometry>
           <material>
-            <script>
-              <uri>file://media/materials/scripts/gazebo.material</uri>
-              <name>Gazebo/Wood</name>
-            </script>
-            <ambient>1 1 1 1</ambient>
+            <ambient>0.44 0.46 0.52 1.0</ambient>
+            <diffuse>0.44 0.46 0.52 1.0</diffuse>
           </material>
         </visual>
-        <pose>-0.75 -0.7 0 0 0 1.5708</pose>
-      </link>
-
-      <link name='mid_block'>
-        <collision name='mid_block_collision'>
-          <pose>0 0 0.3 0 0 0</pose>
-          <geometry>
-            <box>
-              <size>2.1 0.18 0.6</size>
-            </box>
-          </geometry>
-        </collision>
-        <visual name='mid_block_visual'>
-          <pose>0 0 0.3 0 0 0</pose>
-          <geometry>
-            <box>
-              <size>2.1 0.18 0.6</size>
-            </box>
-          </geometry>
-          <material>
-            <script>
-              <uri>file://media/materials/scripts/gazebo.material</uri>
-              <name>Gazebo/Wood</name>
-            </script>
-            <ambient>1 1 1 1</ambient>
-          </material>
-        </visual>
-        <pose>0.85 0.7 0 0 0 1.5708</pose>
+        <pose>0.00 0.00 0 0 0 0</pose>
       </link>
     </model>
 
-    <model name='human_upper_turn'>
+    <model name='pickup_marker'>
       <static>true</static>
-      <pose>-0.05 1.05 0 0 0 0</pose>
+      <pose>2.55 0.95 0 0 0 0</pose>
+      <link name='marker'>
+        <visual name='pad_visual'>
+          <pose>0 0 0.003 0 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.38</radius>
+              <length>0.006</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0.18 0.72 0.24 1.0</ambient>
+            <diffuse>0.18 0.72 0.24 1.0</diffuse>
+          </material>
+        </visual>
+        <visual name='crate_visual'>
+          <pose>0 0 0.12 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>0.22 0.22 0.24</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.92 0.72 0.24 0.95</ambient>
+            <diffuse>0.92 0.72 0.24 0.95</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name='human_upper_aisle'>
+      <static>true</static>
+      <pose>0.45 1.25 0 0 0 0</pose>
       <link name='body'>
         <collision name='body_collision'>
           <pose>0 0 0.45 0 0 0</pose>
           <geometry>
             <cylinder>
               <radius>0.17</radius>
-              <length>0.9</length>
+              <length>0.90</length>
             </cylinder>
           </geometry>
         </collision>
@@ -229,81 +219,44 @@
           <geometry>
             <cylinder>
               <radius>0.17</radius>
-              <length>0.9</length>
+              <length>0.90</length>
             </cylinder>
           </geometry>
           <material>
-            <ambient>0.25 0.5 0.9 1.0</ambient>
-            <diffuse>0.25 0.5 0.9 1.0</diffuse>
+            <ambient>0.20 0.44 0.88 1.0</ambient>
+            <diffuse>0.20 0.44 0.88 1.0</diffuse>
+          </material>
+        </visual>
+        <visual name='head_visual'>
+          <pose>0 0 0.98 0 0 0</pose>
+          <geometry>
+            <sphere>
+              <radius>0.14</radius>
+            </sphere>
+          </geometry>
+          <material>
+            <ambient>0.97 0.82 0.68 1.0</ambient>
+            <diffuse>0.97 0.82 0.68 1.0</diffuse>
           </material>
         </visual>
       </link>
     </model>
 
-    <model name='human_goal_guard'>
+    <model name='human_upper_zone'>
       <static>true</static>
-      <pose>2.0 0.55 0 0 0 0</pose>
-      <link name='body'>
-        <collision name='body_collision'>
-          <pose>0 0 0.45 0 0 0</pose>
-          <geometry>
-            <cylinder>
-              <radius>0.17</radius>
-              <length>0.9</length>
-            </cylinder>
-          </geometry>
-        </collision>
-        <visual name='body_visual'>
-          <pose>0 0 0.45 0 0 0</pose>
-          <geometry>
-            <cylinder>
-              <radius>0.17</radius>
-              <length>0.9</length>
-            </cylinder>
-          </geometry>
-          <material>
-            <ambient>0.25 0.5 0.9 1.0</ambient>
-            <diffuse>0.25 0.5 0.9 1.0</diffuse>
-          </material>
-        </visual>
-      </link>
-    </model>
-
-    <model name='upper_turn_zone'>
-      <static>true</static>
-      <pose>-0.05 1.05 0 0 0 0</pose>
+      <pose>0.45 1.25 0 0 0 0</pose>
       <link name='zone'>
         <visual name='zone_visual'>
           <pose>0 0 0.003 0 0 0</pose>
           <geometry>
             <box>
-              <size>1.05 1.0 0.006</size>
+              <size>1.60 1.20 0.006</size>
             </box>
           </geometry>
-          <transparency>0.3</transparency>
+          <transparency>0.28</transparency>
           <material>
-            <ambient>1.0 0.12 0.12 1.0</ambient>
-            <diffuse>1.0 0.12 0.12 1.0</diffuse>
-          </material>
-        </visual>
-      </link>
-    </model>
-
-    <model name='goal_guard_zone'>
-      <static>true</static>
-      <pose>2.0 0.55 0 0 0 0</pose>
-      <link name='zone'>
-        <visual name='zone_visual'>
-          <pose>0 0 0.003 0 0 0</pose>
-          <geometry>
-            <box>
-              <size>1.15 0.95 0.006</size>
-            </box>
-          </geometry>
-          <transparency>0.3</transparency>
-          <material>
-            <ambient>1.0 0.12 0.12 1.0</ambient>
-            <diffuse>1.0 0.12 0.12 1.0</diffuse>
+            <ambient>1.0 0.10 0.10 1.0</ambient>
+            <diffuse>1.0 0.10 0.10 1.0</diffuse>
           </material>
         </visual>
       </link>

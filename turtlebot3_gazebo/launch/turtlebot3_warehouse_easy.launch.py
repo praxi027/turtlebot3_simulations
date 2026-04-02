@@ -20,7 +20,7 @@ def generate_launch_description():
     world = os.path.join(
         get_package_share_directory('turtlebot3_gazebo'),
         'worlds',
-        'turtlebot3_penalty_corridor.world'
+        'turtlebot3_warehouse_easy.world'
     )
 
     gzserver_cmd = IncludeLaunchDescription(
@@ -58,5 +58,4 @@ def generate_launch_description():
     ld.add_action(gzclient_cmd)
     ld.add_action(robot_state_publisher_cmd)
     ld.add_action(spawn_turtlebot_cmd)
-
     return ld
