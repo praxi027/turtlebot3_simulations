@@ -7,6 +7,7 @@ from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import Node
 
 
 def generate_launch_description():
@@ -16,6 +17,12 @@ def generate_launch_description():
     use_sim_time = LaunchConfiguration('use_sim_time', default='true')
     x_pose = LaunchConfiguration('x_pose', default='-2.75')
     y_pose = LaunchConfiguration('y_pose', default='0.0')
+
+    TURTLEBOT3_MODEL = os.environ.get('TURTLEBOT3_MODEL', 'burger')
+    urdf_path = os.path.join(
+        get_package_share_directory('turtlebot3_gazebo'),
+        'models', 'turtlebot3_' + TURTLEBOT3_MODEL, 'model.sdf'
+    )
 
     world = os.path.join(
         get_package_share_directory('turtlebot3_gazebo'),
@@ -43,14 +50,17 @@ def generate_launch_description():
         launch_arguments={'use_sim_time': use_sim_time}.items()
     )
 
-    spawn_turtlebot_cmd = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(launch_file_dir, 'spawn_turtlebot3.launch.py')
-        ),
-        launch_arguments={
-            'x_pose': x_pose,
-            'y_pose': y_pose
-        }.items()
+    spawn_turtlebot_cmd = Node(
+        package='gazebo_ros',
+        executable='spawn_entity.py',
+        arguments=[
+            '-entity', TURTLEBOT3_MODEL,
+            '-file', urdf_path,
+            '-x', x_pose,
+            '-y', y_pose,
+            '-z', '0.01'
+        ],
+        output='screen',
     )
 
     ld = LaunchDescription()
