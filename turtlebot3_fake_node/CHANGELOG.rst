@@ -2,25 +2,15 @@
 Changelog for package turtlebot3_fake
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-2.3.7 (2025-06-27)
-------------------
-* Changed the header files in tf2/LinearMath from .h to .hpp
-* Contributors: Hyungyu Kim
-
-2.3.5 (2025-06-04)
+2.3.8 (2025-07-10)
 ------------------
 * None
 
-2.3.3 (2025-05-29)
-------------------
-* Deprecate ament_include_dependency usage in CMakeLists.txt, related PR(https://github.com/ROBOTIS-GIT/turtlebot3_simulations/pull/234)
-* Contributor: ahcorde
-
-2.3.2 (2025-04-01)
+2.3.6 (2025-06-19)
 ------------------
 * None
 
-2.3.1 (2025-03-25)
+2.3.4 (2025-05-28)
 ------------------
 * None
 
@@ -28,7 +18,7 @@ Changelog for package turtlebot3_fake
 ------------------
 * None
 
-2.2.6 (2202-05-26)
+2.2.6 (2022-05-26)
 ------------------
 * ROS 2 Humble Hawksbill supported
 * Contributors: Will Son

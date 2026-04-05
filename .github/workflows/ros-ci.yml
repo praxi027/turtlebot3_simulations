@@ -74,4 +74,5 @@ jobs:
           package-name: |
             turtlebot3_fake_node
             turtlebot3_gazebo
+            turtlebot3_manipulation_gazebo
             turtlebot3_simulations

@@ -2,31 +2,20 @@
 Changelog for package turtlebot3_simulations
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-2.3.7 (2025-06-27)
+2.3.8 (2025-07-10)
 ------------------
-* Changed the header files in tf2/LinearMath from .h to .hpp
+* Fixed the issue where the TurtleBot3 Manipulation Gazebo simulation was not working properly
 * Contributors: Hyungyu Kim
 
-2.3.5 (2025-06-04)
+2.3.6 (2025-06-19)
 ------------------
-* Added turtlebot3_machine_learning world and plugin
+* Included the TurtleBot3 Manipulation Gazebo simulation package in the metapackage's package.xml and updated the CI configuration accordingly
+* Contributors: Hyungyu Kim
+
+2.3.4 (2025-05-28)
+------------------
+* Moved the TurtleBot3 Manipulation Gazebo simulation from the turtlebot3_manipulation_bringup package
 * Contributors: ChanHyeong Lee
-
-2.3.3 (2025-05-29)
-------------------
-* Deprecate ament_include_dependency usage in CMakeLists.txt, related PR(https://github.com/ROBOTIS-GIT/turtlebot3_simulations/pull/234)
-* Contributor: ahcorde
-
-2.3.2 (2025-04-01)
-------------------
-* Added a plugin to Turtlebot3 House
-* Contributors: Hyungyu Kim
-
-2.3.1 (2025-03-25)
-------------------
-* Gazebo Sim update
-* Jazzy supprot: TurtleBot3 World, TurtleBot3 House
-* Contributors: Hyungyu Kim
 
 2.3.0 (2025-02-17)
 ------------------
@@ -36,7 +25,7 @@ Changelog for package turtlebot3_simulations
 * Updated robot mesh in Gazebo and RViz
 * Contributors: Hyungyu Kim
 
-2.2.6 (2202-05-26)
+2.2.6 (2022-05-26)
 ------------------
 * ROS 2 Humble Hawksbill supported
 * Contributors: Will Son
