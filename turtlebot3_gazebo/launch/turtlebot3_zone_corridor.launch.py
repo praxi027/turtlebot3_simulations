@@ -16,7 +16,7 @@ def generate_launch_description():
 
     use_sim_time = LaunchConfiguration('use_sim_time', default='true')
     x_pose = LaunchConfiguration('x_pose', default='-3.5')
-    y_pose = LaunchConfiguration('y_pose', default='0.5')
+    y_pose = LaunchConfiguration('y_pose', default='0.0')
 
     TURTLEBOT3_MODEL = os.environ.get('TURTLEBOT3_MODEL', 'burger')
     urdf_path = os.path.join(
@@ -27,7 +27,7 @@ def generate_launch_description():
     world = os.path.join(
         get_package_share_directory('turtlebot3_gazebo'),
         'worlds',
-        'turtlebot3_zone_detour.world'
+        'turtlebot3_zone_corridor.world'
     )
 
     gzserver_cmd = IncludeLaunchDescription(
