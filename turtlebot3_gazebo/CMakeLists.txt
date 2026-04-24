@@ -20,18 +20,28 @@ endif()
 # Find ament packages and libraries for ament and system dependencies
 ################################################################################
 find_package(ament_cmake REQUIRED)
-find_package(ros_gz_sim REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(tf2 REQUIRED)
-find_package(gz_math_vendor REQUIRED)
-find_package(gz-math REQUIRED)
-find_package(gz_sim_vendor REQUIRED)
-find_package(gz-sim REQUIRED)
-find_package(gz_plugin_vendor REQUIRED)
-find_package(gz-plugin REQUIRED)
+
+# Optional Gazebo Sim (Garden+) deps for the DQN obstacle plugins.
+# Not available on Humble/Gazebo Classic — build them only when present.
+find_package(ros_gz_sim QUIET)
+find_package(gz_math_vendor QUIET)
+find_package(gz-math QUIET)
+find_package(gz_sim_vendor QUIET)
+find_package(gz-sim QUIET)
+find_package(gz_plugin_vendor QUIET)
+find_package(gz-plugin QUIET)
+if(gz-sim_FOUND AND gz-math_FOUND AND gz-plugin_FOUND)
+  set(BUILD_GZ_SIM_PLUGINS TRUE)
+else()
+  set(BUILD_GZ_SIM_PLUGINS FALSE)
+  message(STATUS
+    "gz-sim not found; skipping DQN obstacle plugins (Gazebo Classic build).")
+endif()
 
 ################################################################################
 # Build
@@ -65,25 +75,31 @@ set(OBSTACLE_LIBS
   obstacle2
 )
 
-foreach(lib ${OBSTACLE_LIBS})
-  add_library(${lib} SHARED src/${lib}.cpp)
-  target_link_libraries(${lib}
-    PUBLIC
-    gz-sim::gz-sim
-    gz-math::gz-math
-  )
-endforeach()
+if(BUILD_GZ_SIM_PLUGINS)
+  foreach(lib ${OBSTACLE_LIBS})
+    add_library(${lib} SHARED src/${lib}.cpp)
+    target_link_libraries(${lib}
+      PUBLIC
+      gz-sim::gz-sim
+      gz-math::gz-math
+    )
+  endforeach()
+endif()
 
 ################################################################################
 # Install
 ################################################################################
 install(TARGETS
   ${EXEC_NAME}
-  obstacles
-  obstacle1
-  obstacle2
   DESTINATION lib/${PROJECT_NAME}
 )
+
+if(BUILD_GZ_SIM_PLUGINS)
+  install(TARGETS
+    ${OBSTACLE_LIBS}
+    DESTINATION lib/${PROJECT_NAME}
+  )
+endif()
 
 install(DIRECTORY launch models params rviz urdf worlds
   DESTINATION share/${PROJECT_NAME}/
