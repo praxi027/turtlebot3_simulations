@@ -22,6 +22,8 @@
   <depend>rclcpp</depend>
   <depend>sensor_msgs</depend>
   <depend>tf2</depend>
+  <exec_depend>nav2_bringup</exec_depend>
+  <exec_depend>aws_robomaker_small_warehouse_world</exec_depend>
   <export>
     <build_type>ament_cmake</build_type>
     <gazebo_ros gazebo_model_path="${prefix}/models"/>
