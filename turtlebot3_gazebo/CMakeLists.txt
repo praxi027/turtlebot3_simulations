@@ -101,7 +101,7 @@ if(BUILD_GZ_SIM_PLUGINS)
   )
 endif()
 
-install(DIRECTORY launch models params rviz urdf worlds
+install(DIRECTORY launch models params rviz urdf worlds maps scripts
   DESTINATION share/${PROJECT_NAME}/
 )
 
