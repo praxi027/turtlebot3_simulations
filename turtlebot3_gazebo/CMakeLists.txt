@@ -25,6 +25,7 @@ find_package(nav_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(tf2 REQUIRED)
+find_package(gazebo REQUIRED)
 
 # Optional Gazebo Sim (Garden+) deps for the DQN obstacle plugins.
 # Not available on Humble/Gazebo Classic — build them only when present.
@@ -86,6 +87,11 @@ if(BUILD_GZ_SIM_PLUGINS)
   endforeach()
 endif()
 
+# Gazebo Classic ModelPlugin: drives a model along looped waypoints so it can
+# act as a moving lidar-visible obstacle in the warehouse_v3 benchmark.
+add_library(pedestrian_plugin SHARED src/pedestrian_plugin.cpp)
+target_link_libraries(pedestrian_plugin ${GAZEBO_LIBRARIES})
+
 ################################################################################
 # Install
 ################################################################################
@@ -100,6 +106,17 @@ if(BUILD_GZ_SIM_PLUGINS)
     DESTINATION lib/${PROJECT_NAME}
   )
 endif()
+
+install(TARGETS
+  pedestrian_plugin
+  LIBRARY DESTINATION lib/${PROJECT_NAME}
+)
+# Mirror the .so under share/ so the gazebo_ros plugin_path export
+# (rooted at ${prefix} = share/<pkg>) resolves at launch time.
+install(TARGETS
+  pedestrian_plugin
+  LIBRARY DESTINATION share/${PROJECT_NAME}/plugins
+)
 
 install(DIRECTORY launch models params rviz urdf worlds maps scripts
   DESTINATION share/${PROJECT_NAME}/

@@ -4,7 +4,7 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription, SetEnvironmentVariable, TimerAction
 from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
@@ -38,6 +38,7 @@ def generate_launch_description():
     x_pose = LaunchConfiguration('x_pose', default='0.0')
     y_pose = LaunchConfiguration('y_pose', default='0.0')
     yaw = LaunchConfiguration('yaw', default='0.0')
+    gazebo_port = LaunchConfiguration('gazebo_port', default='11345')
     initial_pose_x = LaunchConfiguration('initial_pose_x')
     initial_pose_y = LaunchConfiguration('initial_pose_y')
     initial_pose_z = LaunchConfiguration('initial_pose_z')
@@ -62,6 +63,12 @@ def generate_launch_description():
         },
         convert_types=True,
     )
+    # Fast DDS shared-memory transport is flaky on this host and can stall the
+    # Gazebo/ROS factory path; force UDPv4 transport for warehouse launches.
+    set_fastdds_builtin_transports = SetEnvironmentVariable(
+        name='FASTDDS_BUILTIN_TRANSPORTS',
+        value='UDPv4',
+    )
 
     gazebo_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -71,6 +78,7 @@ def generate_launch_description():
             'x_pose': x_pose,
             'y_pose': y_pose,
             'yaw': yaw,
+            'gazebo_port': gazebo_port,
             'headless': headless,
             'no_roof': no_roof,
             'use_sim_time': use_sim_time,
@@ -82,7 +90,7 @@ def generate_launch_description():
     # Two branches because nav2_bringup's bringup_launch.py expects Python-style
     # 'True'/'False' for `slam` (it's fed to PythonExpression), but IfCondition
     # accepts lowercase `true`/`false` too — so users can pass either.
-    nav2_slam_cmd = GroupAction([
+    nav2_slam_group = GroupAction([
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(
                 os.path.join(pkg_nav2_bringup, 'launch', 'bringup_launch.py')
@@ -96,8 +104,12 @@ def generate_launch_description():
             }.items(),
         ),
     ], condition=IfCondition(slam))
+    nav2_slam_cmd = TimerAction(
+        period=7.0,
+        actions=[nav2_slam_group],
+    )
 
-    nav2_amcl_cmd = GroupAction([
+    nav2_amcl_group = GroupAction([
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(
                 os.path.join(pkg_nav2_bringup, 'launch', 'bringup_launch.py')
@@ -111,6 +123,10 @@ def generate_launch_description():
             }.items(),
         ),
     ], condition=UnlessCondition(slam))
+    nav2_amcl_cmd = TimerAction(
+        period=7.0,
+        actions=[nav2_amcl_group],
+    )
 
     filter_mask_server_cmd = Node(
         package='nav2_map_server',
@@ -140,7 +156,7 @@ def generate_launch_description():
         }],
     )
 
-    costmap_filter_lifecycle_cmd = Node(
+    costmap_filter_lifecycle_node = Node(
         package='nav2_lifecycle_manager',
         executable='lifecycle_manager',
         name='lifecycle_manager_keepout_filter',
@@ -150,6 +166,13 @@ def generate_launch_description():
             'autostart': autostart,
             'node_names': ['filter_mask_server', 'costmap_filter_info_server'],
         }],
+    )
+    # The filter nodes sometimes need a beat to finish creating their lifecycle
+    # services; starting the manager immediately can intermittently fail the
+    # first configure transition before the nodes finish their own startup.
+    costmap_filter_lifecycle_cmd = TimerAction(
+        period=2.0,
+        actions=[costmap_filter_lifecycle_node],
     )
 
     rviz_cmd = IncludeLaunchDescription(
@@ -171,6 +194,7 @@ def generate_launch_description():
     ld.add_action(DeclareLaunchArgument('x_pose', default_value='0.0'))
     ld.add_action(DeclareLaunchArgument('y_pose', default_value='0.0'))
     ld.add_action(DeclareLaunchArgument('yaw', default_value='0.0'))
+    ld.add_action(DeclareLaunchArgument('gazebo_port', default_value='11345'))
     ld.add_action(DeclareLaunchArgument('initial_pose_x', default_value=x_pose))
     ld.add_action(DeclareLaunchArgument('initial_pose_y', default_value=y_pose))
     ld.add_action(DeclareLaunchArgument('initial_pose_z', default_value='0.0'))
@@ -184,6 +208,7 @@ def generate_launch_description():
         'slam', default_value='false',
         description='Run slam_toolbox online (no prior map) instead of AMCL.'
     ))
+    ld.add_action(set_fastdds_builtin_transports)
     ld.add_action(gazebo_cmd)
     ld.add_action(filter_mask_server_cmd)
     ld.add_action(costmap_filter_info_server_cmd)

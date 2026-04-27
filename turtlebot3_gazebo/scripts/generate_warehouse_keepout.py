@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Generate occupancy maps, keepout masks, and previews for warehouse benchmarks.
+"""Generate occupancy maps, keepout masks, episode goals, and previews.
 
-Layouts: AWS Small Warehouse (no-roof) — two keepout-only benchmark variants.
+Layouts: AWS Small Warehouse (no-roof) — three keepout-only benchmark variants.
 Keepout zones are derived from the physical structures and painted floor markings
 visible in the Gazebo world:
 
@@ -14,9 +14,10 @@ visible in the Gazebo world:
                legs/edges for these structures, but the whole footprint is blocked
                from the western legs to the east wall.
 
-Outputs written to maps/warehouse/ and maps/warehouse_v2/:
+Outputs written to maps/warehouse{,_v2,_v3}/:
   map.pgm / map.yaml          — static occupancy map (AWS basemap, unmodified)
   keepout_mask.pgm / .yaml    — white background, keepout rects painted black
+  goals.yaml                  — versioned episode list (start, goal, distance bucket)
   preview.png                 — red overlay + labelled zones + spawn + goal spots
 """
 
@@ -63,11 +64,19 @@ class Rect:
 
 
 @dataclass(frozen=True)
+class Patrol:
+    name: str
+    speed: float
+    waypoints: tuple[tuple[float, float], ...]
+
+
+@dataclass(frozen=True)
 class Benchmark:
     name: str
     title: str
     zones: tuple[Rect, ...]
     spawn: tuple[float, float] = (0.0, 0.0)
+    patrols: tuple[Patrol, ...] = ()
 
 
 def world_to_px(x: float, y: float) -> tuple[int, int]:
@@ -134,6 +143,15 @@ CENTER_SQUARE_ZONES: list[Rect] = [
     Rect(cx=-1.05, cy=-7.32, w=3.00, h=3.00, label='S4'),
 ]
 
+# KEEP IN SYNC with PEDESTRIAN_PATROLS in launch/nav2_aws_warehouse_v3.launch.py.
+# Validated by validate_patrols() — the generator aborts if any path crosses
+# the static occupancy or the keepout mask within PED_FOOTPRINT_M of the line.
+PED_FOOTPRINT_M = 0.30  # half-width of the cylinder-equivalent footprint
+WAREHOUSE_V3_PATROLS: tuple[Patrol, ...] = (
+    Patrol(name='ped_east', speed=0.6, waypoints=((1.5, 6.0), (1.5, -6.0))),
+    Patrol(name='ped_west', speed=0.5, waypoints=((-3.7, -6.0), (-3.7, 6.0))),
+)
+
 BENCHMARKS: tuple[Benchmark, ...] = (
     Benchmark(
         name='warehouse',
@@ -146,6 +164,13 @@ BENCHMARKS: tuple[Benchmark, ...] = (
         title='warehouse v2 benchmark',
         zones=tuple(WEST_ZONES + EAST_STRUCTURE_ZONES + CENTER_SQUARE_ZONES),
         spawn=(-3.0, 0.0),
+    ),
+    Benchmark(
+        name='warehouse_v3',
+        title='warehouse v3 benchmark (with pedestrians)',
+        zones=tuple(WEST_ZONES + EAST_STRUCTURE_ZONES + CENTER_SQUARE_ZONES),
+        spawn=(-3.0, 0.0),
+        patrols=WAREHOUSE_V3_PATROLS,
     ),
 )
 
@@ -224,6 +249,137 @@ def generate_goal_spots(base_arr: np.ndarray,
 
 
 # ---------------------------------------------------------------------------
+# Episode generation
+# ---------------------------------------------------------------------------
+# Schema is versioned so harnesses can refuse to run against a stale file.
+GOALS_SCHEMA_VERSION = 1
+EPISODE_SEED = 42
+N_PER_BUCKET = 17                 # 17 short + 17 medium + 17 long = 51 episodes
+DIST_BUCKETS = ((0.0, 3.0, 'short'),
+                (3.0, 7.0, 'medium'),
+                (7.0, float('inf'), 'long'))
+
+
+def _bucket_of(dist: float) -> str:
+    for lo, hi, name in DIST_BUCKETS:
+        if lo <= dist < hi:
+            return name
+    return DIST_BUCKETS[-1][2]
+
+
+def generate_episodes(goals: list[tuple[float, float]],
+                      spawn: tuple[float, float],
+                      seed: int = EPISODE_SEED,
+                      n_per_bucket: int = N_PER_BUCKET) -> list[dict]:
+    """Sample N episodes per distance bucket with a fixed seed.
+
+    Start is fixed to spawn (matches Habitat-style episodic eval). Goal yaw is
+    set so that facing the goal from spawn lines up with the episode geometry.
+    """
+    rng = np.random.default_rng(seed)
+    sx, sy = spawn
+
+    by_bucket: dict[str, list[tuple[float, tuple[float, float]]]] = {
+        name: [] for _, _, name in DIST_BUCKETS
+    }
+    for gx, gy in goals:
+        d = float(np.hypot(gx - sx, gy - sy))
+        if d < 0.5:                    # too close to spawn — skip
+            continue
+        by_bucket[_bucket_of(d)].append((d, (gx, gy)))
+
+    episodes: list[dict] = []
+    ep_idx = 0
+    for _, _, name in DIST_BUCKETS:
+        candidates = by_bucket[name]
+        if not candidates:
+            continue
+        idxs = rng.permutation(len(candidates))[:n_per_bucket]
+        for i in idxs:
+            d, (gx, gy) = candidates[i]
+            yaw_to_goal = float(np.arctan2(gy - sy, gx - sx))
+            episodes.append({
+                'id': f'ep_{ep_idx:03d}',
+                'start': [round(sx, 3), round(sy, 3), 0.0],
+                'goal': [round(gx, 3), round(gy, 3), round(yaw_to_goal, 4)],
+                'distance_m': round(d, 3),
+                'bucket': name,
+            })
+            ep_idx += 1
+    return episodes
+
+
+def validate_patrols(base_arr: np.ndarray, ko_arr: np.ndarray,
+                     patrols: tuple[Patrol, ...]) -> list[str]:
+    """Return a list of error strings if any patrol crosses occupancy/keepout.
+
+    Sampled along each segment plus the closing segment back to waypoint 0,
+    with a square footprint of ±PED_FOOTPRINT_M around the centerline.
+    """
+    errs: list[str] = []
+    if not patrols:
+        return errs
+
+    samples_per_m = 8
+    halfpx = max(1, int(round(PED_FOOTPRINT_M / RES)))
+
+    for p in patrols:
+        wpts = list(p.waypoints) + [p.waypoints[0]]
+        bad_obst = bad_keep = total = 0
+        for a, b in zip(wpts, wpts[1:]):
+            seg_len = float(np.hypot(b[0] - a[0], b[1] - a[1]))
+            n = max(2, int(round(seg_len * samples_per_m)))
+            for t in range(n):
+                f = t / (n - 1)
+                wx = a[0] + (b[0] - a[0]) * f
+                wy = a[1] + (b[1] - a[1]) * f
+                col, row = world_to_px(wx, wy)
+                r0, r1 = max(0, row - halfpx), min(H, row + halfpx + 1)
+                c0, c1 = max(0, col - halfpx), min(W, col + halfpx + 1)
+                patch_base = base_arr[r0:r1, c0:c1]
+                patch_ko = ko_arr[r0:r1, c0:c1]
+                if (patch_base < 200).any():
+                    bad_obst += 1
+                if (patch_ko < 128).any():
+                    bad_keep += 1
+                total += 1
+        if bad_obst or bad_keep:
+            errs.append(
+                f'patrol {p.name!r}: {bad_obst}/{total} samples cross occupancy, '
+                f'{bad_keep}/{total} cross keepout')
+    return errs
+
+
+def write_goals_yaml(path: Path,
+                     benchmark: 'Benchmark',
+                     episodes: list[dict]) -> None:
+    """Hand-formatted YAML so diffs stay readable across regenerations."""
+    lines: list[str] = [
+        '# Auto-generated by generate_warehouse_keepout.py — do not edit by hand.',
+        '# Re-run the script to regenerate after changing keepout zones or seed.',
+        f'schema_version: {GOALS_SCHEMA_VERSION}',
+        f'benchmark: {benchmark.name}',
+        f'seed: {EPISODE_SEED}',
+        f'spawn: [{benchmark.spawn[0]:.3f}, {benchmark.spawn[1]:.3f}, 0.0]',
+        f'clearance_m: {GOAL_CLEARANCE_M:.2f}',
+        f'keepout_buffer_m: {KEEPOUT_BUFFER_M:.2f}',
+        f'n_per_bucket: {N_PER_BUCKET}',
+        'buckets:',
+    ]
+    for lo, hi, name in DIST_BUCKETS:
+        hi_repr = '.inf' if hi == float('inf') else f'{hi:.1f}'
+        lines.append(f'  - {{name: {name}, min_m: {lo:.1f}, max_m: {hi_repr}}}')
+    lines.append('episodes:')
+    for ep in episodes:
+        gs = ', '.join(f'{v:.3f}' for v in ep['start'])
+        gg = ', '.join(f'{v:.4f}' for v in ep['goal'])
+        lines.append(f'  - {{id: {ep["id"]}, bucket: {ep["bucket"]}, '
+                     f'distance_m: {ep["distance_m"]:.3f}, '
+                     f'start: [{gs}], goal: [{gg}]}}')
+    path.write_text('\n'.join(lines) + '\n')
+
+
+# ---------------------------------------------------------------------------
 # Preview renderer
 # ---------------------------------------------------------------------------
 EXTENT = (ORIGIN[0], ORIGIN[0] + W * RES, ORIGIN[1], ORIGIN[1] + H * RES)
@@ -250,7 +406,8 @@ def render_preview(base_arr: np.ndarray, ko_arr: np.ndarray,
                    zones: list[Rect] | tuple[Rect, ...],
                    spawn: tuple[float, float],
                    title: str,
-                   out_path: Path) -> None:
+                   out_path: Path,
+                   patrols: tuple[Patrol, ...] = ()) -> None:
     fig, ax = plt.subplots(figsize=(7, 10), dpi=130)
 
     ax.imshow(base_arr, cmap='gray', vmin=0, vmax=255, extent=EXTENT,
@@ -288,6 +445,15 @@ def render_preview(base_arr: np.ndarray, ko_arr: np.ndarray,
         ax.scatter(gx, gy, marker='x', color='dodgerblue', s=40,
                    linewidths=1.2, zorder=4, label=f'goal spots ({len(goals)})')
 
+    # Pedestrian patrols (closed loops, with current-direction arrow)
+    for p in patrols:
+        wx = [w[0] for w in p.waypoints] + [p.waypoints[0][0]]
+        wy = [w[1] for w in p.waypoints] + [p.waypoints[0][1]]
+        ax.plot(wx, wy, color='#7B2CBF', linewidth=1.6, linestyle='-',
+                marker='s', markersize=4, zorder=6)
+        ax.text(p.waypoints[0][0], p.waypoints[0][1] + 0.35, p.name,
+                color='#7B2CBF', fontsize=7, ha='center', va='bottom')
+
     # Legend proxies
     legend_patches = [
         mpatches.Patch(facecolor=ZONE_COLORS[prefix], alpha=0.6,
@@ -295,13 +461,19 @@ def render_preview(base_arr: np.ndarray, ko_arr: np.ndarray,
         for prefix in ('W', 'C', 'S')
         if any(r.label.startswith(prefix) for r in zones)
     ]
-    ax.legend(handles=[
+    legend_handles = [
         *legend_patches,
         plt.Line2D([0], [0], marker='o', color='limegreen', markersize=8,
                    markeredgecolor='black', linestyle='', label='spawn'),
         plt.Line2D([0], [0], marker='x', color='dodgerblue', markersize=6,
                    linewidth=1.2, linestyle='', label=f'goal spots ({len(goals)})'),
-    ], loc='upper left', fontsize=7, framealpha=0.85)
+    ]
+    if patrols:
+        legend_handles.append(
+            plt.Line2D([0], [0], color='#7B2CBF', marker='s', markersize=4,
+                       linewidth=1.6, label=f'pedestrian patrols ({len(patrols)})')
+        )
+    ax.legend(handles=legend_handles, loc='upper left', fontsize=7, framealpha=0.85)
 
     ax.set_title(f'{title} — keepout zones + goal spots', fontsize=11)
     ax.set_xlabel('x (m)')
@@ -340,10 +512,25 @@ def generate_benchmark(base: Image.Image, benchmark: Benchmark) -> None:
     base_arr = np.array(base)
     ko_arr = np.array(ko)
     goals = generate_goal_spots(base_arr, benchmark.zones)
+
+    patrol_errs = validate_patrols(base_arr, ko_arr, benchmark.patrols)
+    if patrol_errs:
+        sys.exit('[' + benchmark.name + '] patrol validation FAILED:\n  '
+                 + '\n  '.join(patrol_errs))
+
     render_preview(base_arr, ko_arr, goals, benchmark.zones, benchmark.spawn,
                    benchmark.title,
-                   out_dir / 'preview.png')
+                   out_dir / 'preview.png',
+                   patrols=benchmark.patrols)
     print(f'[{benchmark.name}] preview → {out_dir / "preview.png"}  ({len(goals)} goal spots)')
+
+    # Versioned episode list — fixed seed → byte-stable across regenerations.
+    episodes = generate_episodes(goals, benchmark.spawn)
+    write_goals_yaml(out_dir / 'goals.yaml', benchmark, episodes)
+    by_bucket = {b: sum(1 for e in episodes if e['bucket'] == b)
+                 for _, _, b in DIST_BUCKETS}
+    print(f'[{benchmark.name}] goals.yaml → {len(episodes)} episodes ('
+          + ', '.join(f'{n} {b}' for b, n in by_bucket.items()) + ')')
     print(f'[{benchmark.name}] zones: {_zone_count_summary(benchmark.zones)}')
     print(f'[{benchmark.name}] recommended spawn: ({benchmark.spawn[0]:.2f}, '
           f'{benchmark.spawn[1]:.2f})')

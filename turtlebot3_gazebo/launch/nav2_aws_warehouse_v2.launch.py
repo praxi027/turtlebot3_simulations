@@ -32,6 +32,7 @@ def generate_launch_description():
     x_pose = LaunchConfiguration('x_pose', default='-3.0')
     y_pose = LaunchConfiguration('y_pose', default='0.0')
     yaw = LaunchConfiguration('yaw', default='0.0')
+    gazebo_port = LaunchConfiguration('gazebo_port', default='11401')
     initial_pose_x = LaunchConfiguration('initial_pose_x')
     initial_pose_y = LaunchConfiguration('initial_pose_y')
     initial_pose_z = LaunchConfiguration('initial_pose_z')
@@ -52,6 +53,7 @@ def generate_launch_description():
             'x_pose': x_pose,
             'y_pose': y_pose,
             'yaw': yaw,
+            'gazebo_port': gazebo_port,
             'initial_pose_x': initial_pose_x,
             'initial_pose_y': initial_pose_y,
             'initial_pose_z': initial_pose_z,
@@ -72,6 +74,7 @@ def generate_launch_description():
     ld.add_action(DeclareLaunchArgument('x_pose', default_value='-3.0'))
     ld.add_action(DeclareLaunchArgument('y_pose', default_value='0.0'))
     ld.add_action(DeclareLaunchArgument('yaw', default_value='0.0'))
+    ld.add_action(DeclareLaunchArgument('gazebo_port', default_value='11401'))
     ld.add_action(DeclareLaunchArgument('initial_pose_x', default_value=x_pose))
     ld.add_action(DeclareLaunchArgument('initial_pose_y', default_value=y_pose))
     ld.add_action(DeclareLaunchArgument('initial_pose_z', default_value='0.0'))
